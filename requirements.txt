@@ -1,0 +1,18 @@
+# Web & Server
+fastapi==0.115.*
+uvicorn==0.34.*
+
+# AI & Vector Search (The Core)
+torch --index-url https://download.pytorch.org/whl/cpu
+sentence-transformers>=3.0.0
+faiss-cpu>=1.8.0
+
+# Database & Logic
+sqlalchemy
+groq
+python-dotenv
+pymysql
+psycopg2-binary
+
+# Utilities
+pydantic-settings

@@ -1,0 +1,114 @@
+import os
+import json
+import faiss
+import numpy as np
+from datetime import datetime, date
+from decimal import Decimal
+from uuid import UUID
+
+from sqlalchemy import create_engine, text
+from sentence_transformers import SentenceTransformer
+from groq import Groq
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Initialize AI Components
+embed_model = SentenceTransformer('BAAI/bge-small-en-v1.5')
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+db_engine = create_engine(os.getenv("DATABASE_URL"))
+
+def universal_serializer(obj):
+    """Converts non-JSON types (Decimal, Datetime) into standard formats."""
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, UUID):
+        return str(obj)
+    return str(obj)
+
+class DatabaseChatbot:
+    def __init__(self, project_path=None):
+        if project_path is None:
+            project_path = os.getenv("STORAGE_PATH", "./store/current_db")
+        
+        # Load the index and metadata
+        self.index = faiss.read_index(os.path.join(project_path, "vector.faiss"))
+        with open(os.path.join(project_path, "metadata.json"), "r") as f:
+            self.metadata = json.load(f)
+        with open(os.path.join(project_path, "id_map.json"), "r") as f:
+            self.id_map = json.load(f)
+
+    def get_context(self, user_query):
+        """Finds the 2 most relevant tables for the question."""
+        query_vec = embed_model.encode([user_query])
+        _, indices = self.index.search(np.array(query_vec).astype('float32'), k=2)
+        
+        context_str = ""
+        for idx in indices[0]:
+            if idx < 0 or idx >= len(self.id_map): continue
+            table_name = self.id_map[int(idx)] 
+            
+            info = self.metadata[table_name]
+            cols = [c['name'] for c in info['columns']]
+            context_str += f"Table {table_name} (Columns: {', '.join(cols)})\n"
+        return context_str
+
+    def ask(self, user_query):
+        # 1. Retrieve Schema Context
+        context = self.get_context(user_query)
+        
+        # 2. Generate SQL with Groq - TIGHTENED PROMPT
+        sql_prompt = f"""
+        You are a READ-ONLY MySQL assistant. 
+        Schema Context:
+        {context}
+        
+        Question: {user_query}
+        
+        RULES:
+        1. Return ONLY the raw SELECT SQL query.
+        2. If the user asks to DELETE, UPDATE, INSERT, DROP, or ALTER, return the word "UNAUTHORIZED".
+        3. Do not provide instructions, steps, or explanations on how to perform data modification.
+        4. No markdown, no backticks.
+        """
+        
+        res = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": sql_prompt}]
+        )
+        sql_query = res.choices[0].message.content.strip().replace('```sql', '').replace('```', '')
+
+        # 🛡️ LAYER 1: Prompt-Level Rejection
+        if "UNAUTHORIZED" in sql_query.upper():
+            return {"answer": "I am a read-only assistant and cannot perform or explain data modifications.", "sql": None, "data": []}
+
+        # 🛡️ LAYER 2: Python-Level Regex Check (Double Security)
+        # We check for keywords to ensure the AI didn't sneak one through
+        forbidden_keywords = ["DELETE", "UPDATE", "INSERT", "DROP", "ALTER", "TRUNCATE", "REPLACE", "CREATE"]
+        if any(word in sql_query.upper() for word in forbidden_keywords):
+            return {"answer": "I am a read-only assistant and cannot perform or explain data modifications.", "sql": None, "data": []}
+
+        try:
+            # 3. Execute and Clean Data
+            with db_engine.connect() as conn:
+                result = conn.execute(text(sql_query))
+                raw_rows = [dict(row._mapping) for row in result]
+                clean_data = json.loads(json.dumps(raw_rows, default=universal_serializer))
+
+            # 4. Generate Human-Friendly Summary
+            summary_prompt = f"User asked: {user_query}\nData: {json.dumps(clean_data)}\nSummarize this data for the user."
+            summary_res = groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": summary_prompt}]
+            )
+            
+            return {
+                "answer": summary_res.choices[0].message.content,
+                "sql": sql_query,
+                "data": clean_data
+            }
+        except Exception as e:
+            # Catch errors like the AI trying to query a non-existent table/column
+            return {"answer": "I encountered an error while retrieving that information. Please ensure your request is about viewing data.", "error": str(e)}
