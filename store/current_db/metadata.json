@@ -23,7 +23,24 @@
                 "type": "TINYINT"
             }
         ],
-        "description": "This table stores information about geographical or administrative assemblies, including their names in Hindi and English, and their status of activity, likely for use in managing or referencing regional divisions within a specific district."
+        "sample_values": {
+            "id": [
+                "2.0"
+            ],
+            "district_id": [
+                "1.0"
+            ],
+            "name_hi": [
+                "कुरुद"
+            ],
+            "name_en": [
+                "Kurud"
+            ],
+            "is_active": [
+                "1.0"
+            ]
+        },
+        "description": "This table stores information about electoral assemblies, including their names in English and Hindi, and their corresponding district identifiers, along with an indicator of whether they are currently active."
     },
     "auth_assignment": {
         "table_name": "auth_assignment",
@@ -41,7 +58,18 @@
                 "type": "INTEGER"
             }
         ],
-        "description": "This table stores authorization assignments, mapping specific permissions or roles to individual users within the system."
+        "sample_values": {
+            "item_name": [
+                "System Admin"
+            ],
+            "user_id": [
+                "1"
+            ],
+            "created_at": [
+                "1763398580.0"
+            ]
+        },
+        "description": "This table stores user authorization assignments, mapping specific roles or permissions, such as \"System Admin\", to individual user IDs along with their assignment timestamps."
     },
     "auth_item": {
         "table_name": "auth_item",
@@ -75,7 +103,37 @@
                 "type": "INTEGER"
             }
         ],
-        "description": "This table stores authorization items, such as roles, permissions, and rules, that define access control and security policies for users within an application."
+        "sample_values": {
+            "name": [
+                "System Admin",
+                "Viewer",
+                "/*",
+                "/assemblies/*",
+                "/assemblies/index"
+            ],
+            "type": [
+                "1.0",
+                "2.0"
+            ],
+            "description": [],
+            "rule_name": [],
+            "data": [],
+            "created_at": [
+                "1750501258.0",
+                "1766510190.0",
+                "1766510183.0",
+                "1763487361.0",
+                "1763487354.0"
+            ],
+            "updated_at": [
+                "1750501258.0",
+                "1766510190.0",
+                "1766510183.0",
+                "1763487361.0",
+                "1763487354.0"
+            ]
+        },
+        "description": "This table stores authorization item details, including roles, permissions, and access rules, to manage user access and privileges within a system."
     },
     "auth_item_child": {
         "table_name": "auth_item_child",
@@ -89,7 +147,20 @@
                 "type": "VARCHAR(64) COLLATE \"utf8mb3_unicode_ci\""
             }
         ],
-        "description": "This table stores hierarchical relationships between authorization items, where each row represents a parent-child association indicating that a particular authorization item inherits permissions from another."
+        "sample_values": {
+            "parent": [
+                "System Admin",
+                "Viewer"
+            ],
+            "child": [
+                "/*",
+                "/category-master/*",
+                "/category-master/index",
+                "/mandal-master/*",
+                "/mandal-master/index"
+            ]
+        },
+        "description": "This table stores authorization hierarchy data, mapping parent roles to their corresponding child permissions or access paths, defining the scope of access for various user roles within the system."
     },
     "auth_roles": {
         "table_name": "auth_roles",
@@ -111,7 +182,29 @@
                 "type": "INTEGER"
             }
         ],
-        "description": "This table stores the roles or permissions assigned to individual users, tracking which items or features they have access to within the system."
+        "sample_values": {
+            "id": [
+                "1.0",
+                "3.0",
+                "6.0"
+            ],
+            "user_id": [
+                "1.0",
+                "2.0",
+                "3.0"
+            ],
+            "item_name": [
+                "Admin",
+                "",
+                "Viewer"
+            ],
+            "created_at": [
+                "1733720666.0",
+                "1766674763.0",
+                "1766677099.0"
+            ]
+        },
+        "description": "This table stores user role assignments, mapping individual users to specific roles such as Admin or Viewer, along with timestamps for when these roles were assigned."
     },
     "auth_rule": {
         "table_name": "auth_rule",
@@ -133,7 +226,13 @@
                 "type": "INTEGER"
             }
         ],
-        "description": "This table stores authorization rules, including their names and associated data, to manage access control and permissions within the application."
+        "sample_values": {
+            "name": [],
+            "data": [],
+            "created_at": [],
+            "updated_at": []
+        },
+        "description": "This table stores authorization rules with their corresponding metadata, including creation and update timestamps, and associated binary data."
     },
     "bjp_sadasyata": {
         "table_name": "bjp_sadasyata",
@@ -175,7 +274,71 @@
                 "type": "INTEGER"
             }
         ],
-        "description": "This table stores membership information for individuals, including their personal details, age, contact information, and affiliations with specific geographic or organizational units."
+        "sample_values": {
+            "id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0"
+            ],
+            "sadasya_ka_naam": [
+                "श्रीमती तेजीन बाई सेन",
+                "श्री वेदप्रकाश साहू",
+                "श्री धनंजय साहू",
+                "कु. लक्ष्मी साहू",
+                "श्री पोखन लाल साहू"
+            ],
+            "pita_pati_ka_naam": [
+                "श्री खिलेश्वर सेन",
+                "",
+                "श्री हृदय राम साहू",
+                "श्री किशुन साहू",
+                "श्री पोखन लाल साहू"
+            ],
+            "varg": [
+                "OBC",
+                "ST",
+                "SC",
+                "GEN",
+                ""
+            ],
+            "umr": [
+                "44.0",
+                "28.0",
+                "20.0",
+                "23.0",
+                "29.0"
+            ],
+            "mobile_no": [
+                "8370069221",
+                "8817997439",
+                "9329999600",
+                "9009251416",
+                "6268278187"
+            ],
+            "sadasyata_kramank": [
+                "7049743448",
+                "7049787120",
+                "7049853052",
+                "749909670",
+                "708000400"
+            ],
+            "mandal_id": [
+                "4.0",
+                "3.0",
+                "2.0",
+                "1.0"
+            ],
+            "gram_id": [
+                "200.0",
+                "203.0",
+                "174.0",
+                "197.0",
+                "168.0"
+            ]
+        },
+        "description": "This table stores BJP party member details including name, father/husband's name, caste, age, mobile number, membership number, and geographical identifiers like mandal and gram IDs."
     },
     "booth_main": {
         "table_name": "booth_main",
@@ -213,7 +376,52 @@
                 "type": "TIMESTAMP"
             }
         ],
-        "description": "This table stores information about voting booths, including their location, status, and creation details, likely as part of an electoral management system."
+        "sample_values": {
+            "id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0"
+            ],
+            "mandal_id": [
+                "3.0",
+                "4.0",
+                "2.0",
+                "1.0"
+            ],
+            "gram_id": [
+                "127.0",
+                "128.0",
+                "129.0",
+                "130.0",
+                "131.0"
+            ],
+            "booth_no": [
+                "218",
+                "219",
+                "221",
+                "222",
+                "224"
+            ],
+            "year": [
+                "2025.0"
+            ],
+            "status": [
+                "1.0"
+            ],
+            "created_by": [
+                "0.0"
+            ],
+            "created_at": [
+                "2026-01-05T22:56:21",
+                "2026-01-06T08:10:36",
+                "2026-01-06T08:18:03",
+                "2026-01-06T08:20:21",
+                "2026-01-06T08:22:41"
+            ]
+        },
+        "description": "This table stores information about voting booths, including their location, status, and creation details, likely for electoral or administrative purposes."
     },
     "booth_vivaran": {
         "table_name": "booth_vivaran",
@@ -267,7 +475,85 @@
                 "type": "TIMESTAMP"
             }
         ],
-        "description": "This table appears to store information about individual booth representatives or members, capturing their personal and professional details, likely for voting or electoral purposes."
+        "sample_values": {
+            "id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0"
+            ],
+            "booth_main_id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0"
+            ],
+            "pad": [
+                "बूथ अध्यक्ष",
+                "बूथ सचिव",
+                "बी.एल.ए.2",
+                "युवा प्रमुख",
+                "महिला प्रमुख"
+            ],
+            "naam": [
+                "श्री विजेन्द्र पटेल",
+                "श्री यादराम साहू",
+                "श्री उपचरण साहू",
+                "श्री दूजराज",
+                "श्रीमती करुणा बाई"
+            ],
+            "pita_pati_naam": [
+                "श्री तिलक पटेल",
+                "श्री चमरू साहू",
+                "श्री डेरहा साहू",
+                "श्री राम प्यारी",
+                "श्री कैलाश साहू"
+            ],
+            "mobile_no": [
+                "6264753887",
+                "9644247578",
+                "8815832927",
+                "7999294666",
+                "6268436300"
+            ],
+            "umr": [
+                "41.0",
+                "44.0",
+                "33.0",
+                "40.0",
+                "47.0"
+            ],
+            "shiksha": [
+                "10",
+                "12",
+                "8",
+                "5",
+                "6"
+            ],
+            "vyavsay": [
+                "कृषि",
+                "बडई कार्य",
+                "कृषि मजदूरी",
+                "प्राइवेट टीचर",
+                "मजदूरी"
+            ],
+            "status": [
+                "1.0"
+            ],
+            "created_by": [
+                "0.0"
+            ],
+            "created_at": [
+                "2026-01-06T08:14:52",
+                "2026-01-06T08:15:41",
+                "2026-01-06T08:18:03",
+                "2026-01-06T08:20:21",
+                "2026-01-06T08:22:41"
+            ]
+        },
+        "description": "This table stores details of booth-level officials and members, including their name, position, contact information, educational background, occupation, and other personal details, likely for a political organization or party."
     },
     "caste_master": {
         "table_name": "caste_master",
@@ -293,7 +579,44 @@
                 "type": "TIMESTAMP"
             }
         ],
-        "description": "This table stores a master list of caste information, including caste names and their corresponding categories or vargs, for reference and tracking purposes."
+        "sample_values": {
+            "id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0"
+            ],
+            "caste_name": [
+                "यादव",
+                "यदु",
+                "अहीर",
+                "कुर्मी",
+                "कुम्हार"
+            ],
+            "varg": [
+                "OBC",
+                "General",
+                "SC",
+                "ST",
+                ""
+            ],
+            "created_at": [
+                "2025-11-20T22:01:31",
+                "2025-11-29T22:10:04",
+                "2025-11-29T22:11:44",
+                "2025-11-29T22:16:43",
+                "2026-01-15T22:57:46"
+            ],
+            "updated_at": [
+                "2025-11-20T22:01:31",
+                "2025-11-29T22:10:04",
+                "2025-11-29T22:11:44",
+                "2025-11-29T22:16:43",
+                "2026-01-15T22:57:46"
+            ]
+        },
+        "description": "This table stores caste information, including caste names in various languages, their respective categories, and timestamp details for creation and updates."
     },
     "countries": {
         "table_name": "countries",
@@ -319,7 +642,24 @@
                 "type": "TINYINT"
             }
         ],
-        "description": "This table stores a list of countries with their respective codes and names in both Hindi and English, along with an indicator of whether each country is currently active."
+        "sample_values": {
+            "id": [
+                "1.0"
+            ],
+            "code": [
+                "IN"
+            ],
+            "name_hi": [
+                "भारत"
+            ],
+            "name_en": [
+                "Bharat"
+            ],
+            "is_active": [
+                "1.0"
+            ]
+        },
+        "description": "This table stores country details, including their unique codes and names in both English and Hindi, along with an indicator of whether the country is active or not."
     },
     "districts": {
         "table_name": "districts",
@@ -345,7 +685,24 @@
                 "type": "TINYINT"
             }
         ],
-        "description": "This table stores geographical district information, including their names in Hindi and English, along with their association to a specific state and an indicator of whether they are currently active."
+        "sample_values": {
+            "id": [
+                "1.0"
+            ],
+            "state_id": [
+                "1.0"
+            ],
+            "name_hi": [
+                "धमतरी"
+            ],
+            "name_en": [
+                "Dhamtri"
+            ],
+            "is_active": [
+                "1.0"
+            ]
+        },
+        "description": "This table stores geographical district information, including their names in both English and Hindi, along with their corresponding state identifiers and activation status."
     },
     "members": {
         "table_name": "members",
@@ -419,7 +776,107 @@
                 "type": "VARCHAR(200) COLLATE \"utf8mb4_unicode_ci\""
             }
         ],
-        "description": "This table stores information about members, including their personal details, relationships, qualifications, and membership status, likely for an organization or association."
+        "sample_values": {
+            "id": [
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0",
+                "6.0"
+            ],
+            "level": [
+                "DISTRICT",
+                "MANDAL",
+                "ASSEMBLY",
+                "COUNTRY"
+            ],
+            "ref_id": [
+                "1.0",
+                "3.0",
+                "4.0",
+                "2.0"
+            ],
+            "type": [
+                "SANG",
+                "PRA",
+                "RAJ"
+            ],
+            "position_hi": [
+                "अध्यक्ष",
+                "उपाध्यक्ष",
+                "महामंत्री",
+                "कोषाध्यक्ष",
+                "मंत्री"
+            ],
+            "position_en": [],
+            "name_hi": [
+                "श्री प्रकाश बैस",
+                "श्री तिलोकचंद जैन",
+                "श्री पुष्पेन्द्र साहू",
+                "श्री रविकांत चंद्राकर",
+                "श्री विजय यादव"
+            ],
+            "name_en": [
+                "नगरी",
+                "कुरूद",
+                "सिर्री",
+                "मारालौंड",
+                "बेलरगांव"
+            ],
+            "father_name": [
+                "श्री श्याम साहू",
+                "श्री गणपत राम साहू",
+                "श्री जोहितराम निर्मलकर",
+                "श्री टिकम सिंह ध्रुव",
+                "श्री जीवाखान साहू"
+            ],
+            "mobile": [
+                "9425223588",
+                "9617930151",
+                "9098539979",
+                "9755217111",
+                "9981814497"
+            ],
+            "extra_info": [
+                "विशेष आमंत्रित सदस्य",
+                "अधिकारियों की सूची",
+                "",
+                "दिल्ली"
+            ],
+            "document": [
+                "uploads/members/1766593420_694c138cad65f.pdf",
+                ""
+            ],
+            "created_by": [
+                "1.0",
+                "0.0"
+            ],
+            "is_active": [
+                "1.0"
+            ],
+            "created_at": [
+                "2025-12-24T17:31:07",
+                "2025-12-24T19:45:49",
+                "2025-12-24T21:27:28",
+                "2025-12-24T21:53:40",
+                "2025-12-26T22:24:29"
+            ],
+            "dob": [
+                "1980-11-17",
+                "1988-07-05",
+                "1989-06-25",
+                "1988-06-24",
+                "1986-07-01"
+            ],
+            "qualification": [
+                "स्नातक",
+                "12वीं",
+                "बीए",
+                "स्नातकोत्तर",
+                "एलएलबी"
+            ]
+        },
+        "description": "This table stores details of members, including their personal information, positions, and contact details, in both English and Hindi, likely for an organization or political party."
     },
     "menu": {
         "table_name": "menu",
@@ -453,7 +910,50 @@
                 "type": "VARCHAR(255)"
             }
         ],
-        "description": "This table appears to store menu item configurations, holding data that defines the structure, layout, and visual representation of a navigational menu in a web or desktop application."
+        "sample_values": {
+            "id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "124.0"
+            ],
+            "name": [
+                "Site Menu",
+                "Top Menu",
+                "User Master",
+                "मास्टर",
+                "मंडल मास्टर"
+            ],
+            "parent": [
+                "1.0",
+                "4.0",
+                "124.0"
+            ],
+            "route": [
+                "/mandal-master/index",
+                "/category-master/index",
+                "/village-master/index",
+                "/party-master/index",
+                "/voter-management/caste-index"
+            ],
+            "order": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0"
+            ],
+            "data": [],
+            "icon": [
+                "fa fa-user-circle-o",
+                "ri-apps-2-line",
+                "",
+                " ri-file-list-3-line",
+                "ri-team-line"
+            ]
+        },
+        "description": "This table stores menu item details for a web application, including their names, routes, icons, and hierarchical structure, with support for multiple languages, including English and Hindi."
     },
     "migration": {
         "table_name": "migration",
@@ -467,7 +967,23 @@
                 "type": "INTEGER"
             }
         ],
-        "description": "This table stores a record of database migration history, tracking the version and timestamp of each migration that has been applied to the database."
+        "sample_values": {
+            "version": [
+                "m000000_000000_base",
+                "m130524_201442_init",
+                "m140506_102106_rbac_init",
+                "m140602_111327_create_menu_table",
+                "m160312_050000_create_user"
+            ],
+            "apply_time": [
+                "1699427116.0",
+                "1699427161.0",
+                "1710485430.0",
+                "1710485470.0",
+                "1754326144.0"
+            ]
+        },
+        "description": "This table stores database migration history, including the version and timestamp of each migration applied to the database."
     },
     "notrifications": {
         "table_name": "notrifications",
@@ -489,7 +1005,13 @@
                 "type": "TIMESTAMP"
             }
         ],
-        "description": "This table stores notifications or alerts generated by users, tracking the content of the message, the user who created it, and the timestamp of its creation."
+        "sample_values": {
+            "id": [],
+            "message": [],
+            "created_by": [],
+            "created_at": []
+        },
+        "description": "This table stores notification records, including the message, creator, and timestamp, likely for a system that tracks and manages alerts or updates."
     },
     "party_master": {
         "table_name": "party_master",
@@ -515,7 +1037,26 @@
                 "type": "INTEGER"
             }
         ],
-        "description": "This table stores information about different parties or entities, such as organizations or individuals, and tracks their status over time."
+        "sample_values": {
+            "id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0"
+            ],
+            "party_name": [
+                "BJP",
+                "BJP/CONG",
+                "CONG",
+                "OTHER"
+            ],
+            "status": [
+                "1.0"
+            ],
+            "created_at": [],
+            "updated_at": []
+        },
+        "description": "This table stores information about different political parties, including their names, status, and timestamps for creation and updates."
     },
     "ro_tbl_customer": {
         "table_name": "ro_tbl_customer",
@@ -549,7 +1090,50 @@
                 "type": "DATETIME"
             }
         ],
-        "description": "This table stores customer information, including their contact details, address, and status, and associates each customer with a specific user who manages them."
+        "sample_values": {
+            "id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0"
+            ],
+            "name": [
+                "Surendra",
+                "Ritesh",
+                "Suresh",
+                "ghvv",
+                "foxi"
+            ],
+            "contactnum": [
+                "5555656666",
+                "7016229152",
+                "7772069933",
+                "7879559933",
+                "8225000030"
+            ],
+            "address": [
+                "",
+                "Gudhiyari Raipur",
+                "vvbbb ",
+                "vhbbbh",
+                "pathari "
+            ],
+            "status": [
+                "1.0"
+            ],
+            "belongstouserid": [
+                "1.0"
+            ],
+            "createdon": [
+                "2025-12-18T11:59:29",
+                "2025-12-23T15:28:43",
+                "2025-12-23T15:30:36",
+                "2025-12-23T15:33:12",
+                "2025-12-23T15:33:19"
+            ]
+        },
+        "description": "This table stores customer information, including name, contact number, address, and status, belonging to specific user IDs, likely for a business or sales management system."
     },
     "ro_tbl_ro_service": {
         "table_name": "ro_tbl_ro_service",
@@ -595,7 +1179,68 @@
                 "type": "TEXT COLLATE \"utf8mb4_general_ci\""
             }
         ],
-        "description": "This table appears to store data related to customer service records, including schedule and status information for upcoming or completed services provided to clients."
+        "sample_values": {
+            "id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0"
+            ],
+            "belongstouserid": [
+                "1.0"
+            ],
+            "customerid": [
+                "2.0",
+                "6.0",
+                "7.0",
+                "8.0",
+                "9.0"
+            ],
+            "customer_name": [
+                "Ritesh",
+                "Surendra",
+                "ghvv",
+                "foxi",
+                "viren bhai"
+            ],
+            "next_service_date": [
+                "2026-03-31",
+                "2025-01-05",
+                "2025-12-31",
+                "2025-12-25",
+                "2026-03-26"
+            ],
+            "status": [
+                "1.0"
+            ],
+            "createdon": [
+                "2025-12-24T14:09:01",
+                "2025-12-24T14:49:15",
+                "2025-12-24T11:58:48",
+                "2025-12-24T13:51:34",
+                "2025-12-25T09:46:20"
+            ],
+            "updatedon": [
+                "2025-12-28T10:30:12",
+                "2025-12-26T13:11:39",
+                "2026-01-03T14:21:16",
+                "2026-01-05T12:37:25",
+                "2026-01-29T12:52:39"
+            ],
+            "service_status": [
+                "1",
+                "0"
+            ],
+            "remark": [
+                "utilized samaans - 1 filter, capacitor",
+                "ghbb",
+                "fgvvvvb",
+                "unicorn ro",
+                "service for RO repair "
+            ]
+        },
+        "description": "This table stores water purification Reverse Osmosis (RO) service details, including customer information, service schedules, and maintenance records."
     },
     "ro_tbl_services_log": {
         "table_name": "ro_tbl_services_log",
@@ -633,7 +1278,53 @@
                 "type": "TIMESTAMP"
             }
         ],
-        "description": "This table stores a log of services performed, including the type of service, date of service, next scheduled service date, and associated user and list information, effectively tracking and managing a history of maintenance or support activities."
+        "sample_values": {
+            "id": [
+                "22.0",
+                "23.0",
+                "24.0",
+                "25.0"
+            ],
+            "service_id": [
+                "7.0",
+                "8.0",
+                "16.0"
+            ],
+            "service_date": [
+                "2026-01-03",
+                "2026-01-04",
+                "2026-01-05",
+                "2026-01-29"
+            ],
+            "next_service_date": [
+                "2026-01-04",
+                "2026-01-14",
+                "2026-01-22",
+                "2026-01-30"
+            ],
+            "samanlist": [
+                "hfhfhhghh",
+                "udiffifuufuf",
+                "",
+                "ghh"
+            ],
+            "userid": [
+                "1.0"
+            ],
+            "created_at": [
+                "2026-01-03T19:50:37",
+                "2026-01-03T19:51:16",
+                "2026-01-05T18:07:25",
+                "2026-01-29T18:22:39"
+            ],
+            "updated_at": [
+                "2026-01-03T19:50:37",
+                "2026-01-03T19:51:16",
+                "2026-01-05T18:07:25",
+                "2026-01-29T18:22:39"
+            ]
+        },
+        "description": "This table stores service log data, including service dates, next scheduled service dates, and associated user information, likely for maintenance or upkeep activities."
     },
     "ro_tbl_users": {
         "table_name": "ro_tbl_users",
@@ -667,7 +1358,30 @@
                 "type": "DATETIME"
             }
         ],
-        "description": "This table stores user registration information, including personal details and account status, for a web application or system."
+        "sample_values": {
+            "id": [
+                "1.0"
+            ],
+            "name": [
+                "Ritesh Kumar"
+            ],
+            "emailid": [
+                "ritesh@example.com"
+            ],
+            "contactnum": [
+                "9876543210"
+            ],
+            "password": [
+                "9c87baa223f464954940f859bcf2e233"
+            ],
+            "status": [
+                "1.0"
+            ],
+            "createdon": [
+                "2025-12-18T11:22:47"
+            ]
+        },
+        "description": "This table stores user registration details, including name, email, contact number, password, and status, likely for an online platform or application that requires user authentication and management."
     },
     "states": {
         "table_name": "states",
@@ -697,7 +1411,27 @@
                 "type": "TINYINT"
             }
         ],
-        "description": "This table stores information about geographical states or regions, including their unique identifiers, country associations, and multilingual names, to support location-based data management and filtering."
+        "sample_values": {
+            "id": [
+                "1.0"
+            ],
+            "country_id": [
+                "1.0"
+            ],
+            "code": [
+                "CH"
+            ],
+            "name_hi": [
+                "छत्तीसगढ़"
+            ],
+            "name_en": [
+                "Chhattisgarh"
+            ],
+            "is_active": [
+                "1.0"
+            ]
+        },
+        "description": "This table stores state-level geographical information, including state codes and names in both English and Hindi, along with their activation status."
     },
     "tbl_block_master": {
         "table_name": "tbl_block_master",
@@ -727,7 +1461,43 @@
                 "type": "INTEGER"
             }
         ],
-        "description": "This table stores administrative division data, specifically master information about blocks, including their codes, names, and statuses, within specific districts and states."
+        "sample_values": {
+            "id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0"
+            ],
+            "state_id": [
+                "1.0"
+            ],
+            "district_id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0"
+            ],
+            "block_code": [
+                "3629.0",
+                "3633.0",
+                "3634.0",
+                "3636.0",
+                "3637.0"
+            ],
+            "block_name": [
+                "बालोद",
+                "डोंडी",
+                "डोंडिलोहारा",
+                "गुंडरदेही ",
+                "गुरुर"
+            ],
+            "status": [
+                "1.0"
+            ]
+        },
+        "description": "This table stores administrative block details, including block codes and names in Hindi, along with their corresponding state and district identifiers, and status."
     },
     "tbl_caste_vote_details": {
         "table_name": "tbl_caste_vote_details",
@@ -749,7 +1519,37 @@
                 "type": "INTEGER"
             }
         ],
-        "description": "This table stores the voting details for each caste, linking individual voters to their respective castes and tracking the total number of votes cast."
+        "sample_values": {
+            "id": [
+                "47.0",
+                "48.0",
+                "49.0",
+                "50.0",
+                "51.0"
+            ],
+            "caste_voter_id": [
+                "7.0",
+                "8.0",
+                "9.0",
+                "10.0",
+                "11.0"
+            ],
+            "caste_id": [
+                "8.0",
+                "1.0",
+                "2.0",
+                "58.0",
+                "67.0"
+            ],
+            "total": [
+                "1144.0",
+                "146.0",
+                "311.0",
+                "45.0",
+                "5.0"
+            ]
+        },
+        "description": "This table stores voting details for different castes, including the total number of votes cast by each caste, along with the corresponding voter and caste identifiers."
     },
     "tbl_caste_voter": {
         "table_name": "tbl_caste_voter",
@@ -795,7 +1595,63 @@
                 "type": "TIMESTAMP"
             }
         ],
-        "description": "This table stores information about the total number of voters in different villages and categories, tracking voter data and updates for administrative and electoral purposes."
+        "sample_values": {
+            "id": [
+                "6.0",
+                "7.0",
+                "8.0",
+                "9.0",
+                "10.0"
+            ],
+            "mandal_id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0"
+            ],
+            "village_id": [
+                "22.0",
+                "40.0",
+                "1.0",
+                "30.0",
+                "5.0"
+            ],
+            "category_id": [
+                "1.0",
+                "0.0"
+            ],
+            "total_voter": [
+                "946.0",
+                "1939.0",
+                "2427.0",
+                "1114.0",
+                "831.0"
+            ],
+            "status": [
+                "1.0"
+            ],
+            "created_by": [
+                "1.0"
+            ],
+            "created_at": [
+                "2025-11-29T17:58:54",
+                "2026-01-09T09:39:04",
+                "2026-01-17T21:43:05",
+                "2026-01-17T22:10:45",
+                "2026-01-17T22:31:22"
+            ],
+            "updated_by": [
+                "0.0"
+            ],
+            "updated_at": [
+                "2026-01-25T11:41:56",
+                "2026-01-09T09:39:04",
+                "2026-01-17T21:43:05",
+                "2026-01-17T22:10:45",
+                "2026-01-17T22:31:22"
+            ]
+        },
+        "description": "This table stores voter demographic data, including total voter counts, categorized by mandal, village, and caste, along with creation and update timestamps and user information."
     },
     "tbl_caste_voter_wards": {
         "table_name": "tbl_caste_voter_wards",
@@ -817,7 +1673,37 @@
                 "type": "INTEGER"
             }
         ],
-        "description": "This table stores voter demographics and statistics at the ward level, tracking the number of voters associated with specific wards and details."
+        "sample_values": {
+            "id": [
+                "203.0",
+                "204.0",
+                "205.0",
+                "206.0",
+                "207.0"
+            ],
+            "detail_id": [
+                "47.0",
+                "48.0",
+                "49.0",
+                "50.0",
+                "51.0"
+            ],
+            "ward_no": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0"
+            ],
+            "voter_count": [
+                "118.0",
+                "109.0",
+                "52.0",
+                "53.0",
+                "116.0"
+            ]
+        },
+        "description": "This table stores voter demographic data, specifically the number of voters in each ward, organized by unique identifiers and ward numbers."
     },
     "tbl_category_master": {
         "table_name": "tbl_category_master",
@@ -835,7 +1721,26 @@
                 "type": "INTEGER"
             }
         ],
-        "description": "This table holds master data for categories, storing a list of unique category names along with their respective statuses to support categorization and organization of various items or entities within a system."
+        "sample_values": {
+            "id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0"
+            ],
+            "category_name": [
+                "b'\\xe0\\xa4\\x9c\\xe0\\xa4\\xbe\\xe0\\xa4\\xa4\\xe0\\xa4\\xbf\\xe0\\xa4\\xb5\\xe0\\xa4\\xbe\\xe0\\xa4\\xb0 \\xe0\\xa4\\xae\\xe0\\xa4\\xa4\\xe0\\xa4\\xa6\\xe0\\xa4\\xbe\\xe0\\xa4\\xa4\\xe0\\xa4\\xbe \\xe0\\xa4\\xb8\\xe0\\xa4\\x82\\xe0\\xa4\\x96\\xe0\\xa5\\x8d\\xe0\\xa4\\xaf\\xe0\\xa4\\xbe'",
+                "b'8 \\xe0\\xa4\\xaf\\xe0\\xa4\\xbe \\xe0\\xa4\\x85\\xe0\\xa4\\xa7\\xe0\\xa4\\xbf\\xe0\\xa4\\x95 \\xe0\\xa4\\xb8\\xe0\\xa4\\xa6\\xe0\\xa4\\xb8\\xe0\\xa5\\x8d\\xe0\\xa4\\xaf\\xe0\\xa5\\x8b\\xe0\\xa4\\x82 \\xe0\\xa4\\xb5\\xe0\\xa4\\xbe\\xe0\\xa4\\xb2\\xe0\\xa5\\x87 \\xe0\\xa4\\xaa\\xe0\\xa4\\xb0\\xe0\\xa4\\xbf\\xe0\\xa4\\xb5\\xe0\\xa4\\xbe\\xe0\\xa4\\xb0 \\xe0\\xa4\\x95\\xe0\\xa5\\x87 \\xe0\\xa4\\xae\\xe0\\xa5\\x81\\xe0\\xa4\\x96\\xe0\\xa4\\xbf\\xe0\\xa4\\xaf\\xe0\\xa4\\xbe \\xe0\\xa4\\x95\\xe0\\xa5\\x80 \\xe0\\xa4\\x9c\\xe0\\xa4\\xbe\\xe0\\xa4\\xa8\\xe0\\xa4\\x95\\xe0\\xa4\\xbe\\xe0\\xa4\\xb0\\xe0\\xa5\\x80'",
+                "b'\\xe0\\xa4\\x97\\xe0\\xa4\\xbe\\xe0\\xa4\\x81\\xe0\\xa4\\xb5 \\xe0\\xa4\\x95\\xe0\\xa5\\x80 \\xe0\\xa4\\xad\\xe0\\xa5\\x8c\\xe0\\xa4\\xa4\\xe0\\xa4\\xbf\\xe0\\xa4\\x95 \\xe0\\xa4\\xb8\\xe0\\xa5\\x8d\\xe0\\xa4\\xa5\\xe0\\xa4\\xbf\\xe0\\xa4\\xa4\\xe0\\xa4\\xbf'",
+                "b'\\xe0\\xa4\\xb8\\xe0\\xa4\\xae\\xe0\\xa4\\xbe\\xe0\\xa4\\x9c\\xe0\\xa4\\xbf\\xe0\\xa4\\x95 \\xe0\\xa4\\xaa\\xe0\\xa5\\x8d\\xe0\\xa4\\xb0\\xe0\\xa4\\xae\\xe0\\xa5\\x81\\xe0\\xa4\\x96 \\xe0\\xa4\\xb5\\xe0\\xa5\\x8d\\xe0\\xa4\\xaf\\xe0\\xa4\\x95\\xe0\\xa5\\x8d\\xe0\\xa4\\xa4\\xe0\\xa4\\xbf \\xe0\\xa4\\x95\\xe0\\xa5\\x80 \\xe0\\xa4\\xb8\\xe0\\xa5\\x82\\xe0\\xa4\\x9a\\xe0\\xa5\\x80'",
+                "b'\\xe0\\xa4\\xad\\xe0\\xa4\\xbe\\xe0\\xa4\\x9c\\xe0\\xa4\\xaa\\xe0\\xa4\\xbe \\xe0\\xa4\\x95\\xe0\\xa5\\x87 \\xe0\\xa4\\xaa\\xe0\\xa5\\x8d\\xe0\\xa4\\xb0\\xe0\\xa4\\xae\\xe0\\xa5\\x81\\xe0\\xa4\\x96 \\xe0\\xa4\\x95\\xe0\\xa4\\xbe\\xe0\\xa4\\xb0\\xe0\\xa5\\x8d\\xe0\\xa4\\xaf\\xe0\\xa4\\x95\\xe0\\xa4\\xb0\\xe0\\xa5\\x8d\\xe0\\xa4\\xa4\\xe0\\xa4\\xbe'"
+            ],
+            "status": [
+                "1.0"
+            ]
+        },
+        "description": "This table stores category master data, likely for an Indian political or social context, containing various category names in Hindi and their respective status."
     },
     "tbl_department": {
         "table_name": "tbl_department",
@@ -869,7 +1774,16 @@
                 "type": "INTEGER"
             }
         ],
-        "description": "This table stores information about various departments within an organization, including their names, statuses, and details about when and by whom they were created or updated."
+        "sample_values": {
+            "id": [],
+            "department_name": [],
+            "status": [],
+            "created_at": [],
+            "created_by": [],
+            "updated_at": [],
+            "updated_by": []
+        },
+        "description": "This table stores organizational department details, including department names, creation and update information, and status, in a multilingual format supporting English and Hindi."
     },
     "tbl_designation_master": {
         "table_name": "tbl_designation_master",
@@ -907,7 +1821,17 @@
                 "type": "VARBINARY(16)"
             }
         ],
-        "description": "This table stores information about different job designations within an organization, including their names, statuses, and maintenance histories."
+        "sample_values": {
+            "id": [],
+            "designation_name": [],
+            "status": [],
+            "created_by": [],
+            "created_at": [],
+            "updated_by": [],
+            "updated_at": [],
+            "ip": []
+        },
+        "description": "This table stores master data of various designations, including their names, creation and update details, and status, likely for organizational or human resource management purposes."
     },
     "tbl_district_master": {
         "table_name": "tbl_district_master",
@@ -929,7 +1853,27 @@
                 "type": "INTEGER"
             }
         ],
-        "description": "This table stores information about administrative districts, including their names, contact details of responsible officers, and operational status."
+        "sample_values": {
+            "id": [
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0",
+                "6.0"
+            ],
+            "district_name": [
+                "बलौदाबाजार-भाटापारा",
+                "बलरामपुर-रामानुजगंज",
+                "बस्तर",
+                "बेमेतरा",
+                "बीजापुर"
+            ],
+            "officer_contact_file": [],
+            "status": [
+                "1.0"
+            ]
+        },
+        "description": "This table stores master data of districts, including their names in Hindi, contact information of officers, and status, likely for administrative or governance purposes."
     },
     "tbl_jila_karyakarni_list": {
         "table_name": "tbl_jila_karyakarni_list",
@@ -963,7 +1907,50 @@
                 "type": "INTEGER"
             }
         ],
-        "description": "This table stores information about a list of workers or employees, likely in a specific geographic area or organization, tracking their designation, contact details, and status."
+        "sample_values": {
+            "id": [
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0",
+                "6.0"
+            ],
+            "designation": [
+                "उपाध्यक्ष",
+                "महामंत्री",
+                "कोषाध्यक्ष",
+                "मंत्री",
+                "कार्यालय मंत्री"
+            ],
+            "name": [
+                "श्री तिलोकचंद जैन",
+                "श्री पुष्पेन्द्र साहू",
+                "श्री रविकांत चंद्राकर",
+                "श्री विजय यदु",
+                "श्री अकबर कश्यप"
+            ],
+            "address": [
+                "कुरूद",
+                "सिर्री",
+                "मगरलोंड",
+                "बेलरगांव",
+                "रूद्री"
+            ],
+            "mobile_no": [
+                "9617930151",
+                "9098539979",
+                "9755217111",
+                "9981814497",
+                "9753212956"
+            ],
+            "created_at": [
+                "2025-12-22T16:09:38"
+            ],
+            "status": [
+                "1.0"
+            ]
+        },
+        "description": "This table stores details of office bearers or members of an organization, likely a political party, including their designation, name, address, contact information, and status, with data primarily in Hindi."
     },
     "tbl_mandal_karyakarni_list": {
         "table_name": "tbl_mandal_karyakarni_list",
@@ -1017,7 +2004,78 @@
                 "type": "INTEGER"
             }
         ],
-        "description": "This table stores information about members of a mandal karyakarni, including their personal details, contact information, educational background, and membership status."
+        "sample_values": {
+            "id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0"
+            ],
+            "mandal_id": [
+                "1.0"
+            ],
+            "designation": [
+                "अध्यक्ष",
+                "उपाध्यक्ष",
+                "कोषाध्यक्ष",
+                "महामंत्री",
+                "मंत्री"
+            ],
+            "name": [
+                "श्री कृष्णकांत साहू",
+                "श्रीमती निर्मला साहू",
+                "सुश्री धनेश्वरी निर्मलकर",
+                "श्री दुलेश्वर धु्रव",
+                "श्री भोज साहू"
+            ],
+            "pita_pati_name": [
+                "श्री श्याम साहू",
+                "श्री गणपत राम साहू",
+                "श्री जोहितराम निर्मलकर",
+                "श्री विक्रम सिंह धु्रव",
+                "श्री जीवराखन साहू"
+            ],
+            "address": [
+                "कुरूद",
+                "बानगर",
+                "राखी",
+                "चर्रा",
+                "बगौद"
+            ],
+            "mobile_no": [
+                "7000360863",
+                "9827190411",
+                "8120797795",
+                "9179628512",
+                "9575500958"
+            ],
+            "birth_date": [
+                "17.11.1980",
+                "05.07.1988",
+                "25.06.1989",
+                "24.06.1988",
+                "01.07.1986"
+            ],
+            "qualification": [
+                "स्नातक",
+                "12 वी",
+                "बीए",
+                "स्नातकोत्तर",
+                "12वी"
+            ],
+            "other_member": [
+                "0.0"
+            ],
+            "created_at": [
+                "2025-12-22T22:56:17",
+                "2025-12-22T22:56:56"
+            ],
+            "status": [
+                "1.0"
+            ]
+        },
+        "description": "This table stores details of mandal karyakarni members, including their name, address, contact information, educational qualification, and other relevant details, primarily in Hindi."
     },
     "tbl_mandal_master": {
         "table_name": "tbl_mandal_master",
@@ -1043,7 +2101,30 @@
                 "type": "TINYINT"
             }
         ],
-        "description": "This table stores information about administrative divisions known as mandals, including their association with assembly constituencies and their current status and activity level."
+        "sample_values": {
+            "id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0"
+            ],
+            "assembly_id": [
+                "2.0"
+            ],
+            "mandal_name": [
+                "कुरूद",
+                "सिर्री",
+                "मेघा",
+                "भखारा"
+            ],
+            "status": [
+                "1.0"
+            ],
+            "is_active": [
+                "1.0"
+            ]
+        },
+        "description": "This table stores geographical administrative division details, specifically mandal information, including their names in Hindi, associated assembly IDs, and status, for organizational or governance purposes."
     },
     "tbl_public_data": {
         "table_name": "tbl_public_data",
@@ -1141,7 +2222,150 @@
                 "type": "INTEGER"
             }
         ],
-        "description": "This table stores information about public figures or representatives, including their personal details, designation, and electoral data, likely for the purpose of managing and tracking local government or political entities."
+        "sample_values": {
+            "id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0"
+            ],
+            "district_id": [
+                "4.0",
+                "1.0"
+            ],
+            "mandal_id": [
+                "1.0",
+                "3.0",
+                "4.0",
+                "2.0"
+            ],
+            "gram_panchayat_id": [
+                "1.0"
+            ],
+            "gram_id": [
+                "40.0",
+                "1.0",
+                "30.0",
+                "5.0",
+                "4.0"
+            ],
+            "ward_no": [
+                "0",
+                "प्रेमनगर वार्ड 3",
+                "प्रेमनगर वार्ड 4",
+                "अमृतपुर वार्ड 19",
+                "महिला भवन"
+            ],
+            "category_id": [
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0",
+                "6.0"
+            ],
+            "name": [
+                "श्री फूलसिंह साहू",
+                "श्री फत्तेलाल तारक",
+                "श्री भागवत साहू",
+                "श्री बल्लू तारक",
+                "श्री कन्हैया तारक"
+            ],
+            "gardian_name": [
+                "श्री रामप्यारी साहू",
+                "श्री माधो तारक",
+                "श्री पंचम साहू",
+                "श्री बुद्धराम तारक",
+                "श्री दवारू तारक"
+            ],
+            "age": [
+                "59",
+                "65",
+                "55",
+                "60",
+                "56"
+            ],
+            "mobile_no": [
+                "7803094875",
+                "7247787330",
+                "7999711002",
+                "9009343260",
+                "8234086625"
+            ],
+            "qualification": [
+                "मजदूरी",
+                "कृषि",
+                "12वीं",
+                "5वीं",
+                "10वीं"
+            ],
+            "designation": [
+                "",
+                "कृषि",
+                "कृषि दुकान",
+                "मजदूरी",
+                "वाहन मालिक"
+            ],
+            "area_designation": [
+                "",
+                "ब्लॉक",
+                "टिकरापारा",
+                "वार्ड 5  वार्ड 3",
+                "वार्ड 11 भाठापारा"
+            ],
+            "voter_count": [
+                "8.0",
+                "0.0",
+                "10.0",
+                "11.0",
+                "9.0"
+            ],
+            "party_id": [
+                "bjp",
+                "cong",
+                "n",
+                "",
+                "oth"
+            ],
+            "remark": [
+                "",
+                "प्रेमनगर",
+                "अमृतपुर",
+                "इंदिरा चौक",
+                "अस्पताल"
+            ],
+            "manageable": [
+                "नहीं",
+                "हाँ",
+                "",
+                "yes",
+                "no"
+            ],
+            "status": [
+                "1.0"
+            ],
+            "created_at": [
+                "2026-01-12T16:09:52",
+                "2026-01-12T16:15:34",
+                "2026-01-12T16:23:30",
+                "2026-01-12T16:29:25",
+                "2026-01-12T16:36:25"
+            ],
+            "created_by": [
+                "1.0"
+            ],
+            "updated_at": [
+                "2026-01-16T16:48:20",
+                "2026-01-16T16:58:59",
+                "2026-01-16T17:06:18",
+                "2026-01-16T17:08:44",
+                "2026-01-16T17:09:35"
+            ],
+            "updated_by": [
+                "1.0"
+            ]
+        },
+        "description": "This table stores details of local political representatives or workers, including their personal information, party affiliation, ward assignments, and contact details, primarily in Hindi."
     },
     "tbl_village_master": {
         "table_name": "tbl_village_master",
@@ -1175,7 +2399,44 @@
                 "type": "DATETIME"
             }
         ],
-        "description": "This table stores information about villages, including their names, corresponding mandal names, and status, serving as a master repository for village data management."
+        "sample_values": {
+            "id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0"
+            ],
+            "mandal_id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0"
+            ],
+            "village_name": [
+                "बगौद",
+                "थुहा",
+                "नवागांव(उमरदा)",
+                "बंजारी",
+                "बंगोली"
+            ],
+            "mandal_name": [],
+            "status": [
+                "1.0"
+            ],
+            "created_at": [
+                "2025-11-17T17:44:06",
+                "2026-01-09T14:59:12"
+            ],
+            "updated_at": [
+                "2025-11-17T17:44:06",
+                "0000-00-00 00:00:00",
+                "2026-01-19T06:47:36",
+                "2026-01-25T15:55:41",
+                "2026-01-25T15:55:33"
+            ]
+        },
+        "description": "This table stores village master data, including village names, corresponding mandal names, and status, in a bilingual format, primarily in Hindi and English, for administrative or geographical information purposes."
     },
     "tbl_voter_distribution": {
         "table_name": "tbl_voter_distribution",
@@ -1205,7 +2466,15 @@
                 "type": "INTEGER"
             }
         ],
-        "description": "This table stores information about the distribution of voters across different villages and wards, categorized by cast and other demographic factors, to enable analysis of voter demographics and trends."
+        "sample_values": {
+            "id": [],
+            "village_id": [],
+            "ward_no": [],
+            "cast_name": [],
+            "category": [],
+            "voter_count": []
+        },
+        "description": "This table stores voter distribution details, including the number of voters and their categorization, for different villages and wards."
     },
     "user": {
         "table_name": "user",
@@ -1303,7 +2572,76 @@
                 "type": "DATETIME"
             }
         ],
-        "description": "This table stores user authentication and profile information for employees, managing their login credentials, roles, and contact details within an organizational hierarchy."
+        "sample_values": {
+            "id": [
+                "1.0",
+                "3.0"
+            ],
+            "emp_use_id": [
+                "0.0"
+            ],
+            "division_id": [
+                "0.0"
+            ],
+            "district_id": [],
+            "user_role": [
+                "1.0",
+                "4.0"
+            ],
+            "username": [
+                "admin",
+                "neelkanth"
+            ],
+            "employee_name": [
+                "Admin",
+                "Neelkanth yadav"
+            ],
+            "email": [
+                "surya.chandra@entitcs.com",
+                "demo@gmail.com"
+            ],
+            "mobile": [
+                "9340858666",
+                "7418529630"
+            ],
+            "department": [
+                "0",
+                ""
+            ],
+            "designation": [
+                "0",
+                ""
+            ],
+            "auth_key": [
+                ""
+            ],
+            "password_hash": [
+                "$2y$13$jekBWORLXwYGLKnpXSxsCOlhGJ7y1j5/IipF6Nk3J5u.BbB1Bvj.6",
+                "$2y$13$eVt0smkY.pWezDhkOUUXR.OQZHXc5Fgl2pGgt6ojHOAc.sXt2FoOS"
+            ],
+            "hash_key": [
+                "Admin@147",
+                "123456"
+            ],
+            "password_reset_token": [],
+            "status": [
+                "10.0"
+            ],
+            "created_at": [
+                "0000-00-00 00:00:00"
+            ],
+            "created_by": [],
+            "updated_at": [
+                "2025-02-25T06:01:33"
+            ],
+            "verification_token": [],
+            "ip": [],
+            "otp": [],
+            "otp_send_time": [
+                "2025-02-25T06:01:17"
+            ]
+        },
+        "description": "This table stores user registration and authentication details, including usernames, employee information, contact details, and security credentials, for an organizational management system."
     },
     "ward_panchayat_details": {
         "table_name": "ward_panchayat_details",
@@ -1357,7 +2695,91 @@
                 "type": "TIMESTAMP"
             }
         ],
-        "description": "This table stores information about ward panchayat members, including their personal details, educational background, occupation, and party affiliation."
+        "sample_values": {
+            "id": [
+                "42.0",
+                "43.0",
+                "44.0",
+                "45.0",
+                "46.0"
+            ],
+            "main_id": [
+                "3.0",
+                "4.0",
+                "5.0",
+                "6.0",
+                "7.0"
+            ],
+            "ward_no": [
+                "1",
+                "2",
+                "3",
+                "4",
+                "5"
+            ],
+            "status": [
+                "1",
+                "2",
+                "3"
+            ],
+            "name": [
+                "श्री जय कुमार कंवर",
+                "श्री रोहित यादव",
+                "श्रीमती लक्षवती कंवर",
+                "श्रीमती दुलेश्वरी कंवर",
+                "श्री लोकनाथ कंवर"
+            ],
+            "father_husband": [
+                "",
+                "श्री इन्द्रजीत चेलक",
+                "श्री राकेश साहू",
+                "श्री पुरुषोत्तम यादव",
+                "श्री मनोज साहू"
+            ],
+            "mobile": [
+                "7566205600",
+                "",
+                "7587443352",
+                "9977730535",
+                "9425516196"
+            ],
+            "age": [
+                "30.0",
+                "35.0",
+                "40.0",
+                "42.0",
+                "52.0"
+            ],
+            "education": [
+                "",
+                "12वीं",
+                "10वीं",
+                "8वीं",
+                "9वीं"
+            ],
+            "occupation": [
+                "",
+                "गृहणी",
+                "कृषि",
+                "मजदूरी",
+                "नर्स प्राइवेट"
+            ],
+            "party": [
+                "",
+                "BJP",
+                "CO",
+                "cong",
+                "n"
+            ],
+            "created_at": [
+                "2025-12-04T22:40:00",
+                "2026-01-09T09:20:47",
+                "2026-01-09T09:22:54",
+                "2026-01-12T22:21:11",
+                "2026-01-12T22:22:55"
+            ]
+        },
+        "description": "This table stores details of ward panchayat members, including their personal information, educational background, occupation, and political affiliation, in a mix of English and Hindi."
     },
     "ward_panchayat_management": {
         "table_name": "ward_panchayat_management",
@@ -1391,7 +2813,49 @@
                 "type": "TIMESTAMP"
             }
         ],
-        "description": "This table stores information related to the management of ward panchayats, including their association with specific mandals and grams, and tracks changes made by various users over time."
+        "sample_values": {
+            "id": [
+                "3.0",
+                "4.0",
+                "5.0",
+                "6.0",
+                "7.0"
+            ],
+            "mandal_id": [
+                "1.0",
+                "3.0",
+                "4.0",
+                "2.0"
+            ],
+            "gram_id": [
+                "22.0",
+                "40.0",
+                "1.0",
+                "30.0",
+                "5.0"
+            ],
+            "category_id": [
+                "16.0"
+            ],
+            "created_by": [
+                "1.0"
+            ],
+            "created_at": [
+                "2025-12-04T17:58:28",
+                "2026-01-09T09:22:17",
+                "2026-01-20T13:32:14",
+                "2026-01-20T13:48:56",
+                "2026-01-20T16:26:29"
+            ],
+            "updated_at": [
+                "2025-12-04T18:10:00",
+                "2026-01-20T13:32:14",
+                "2026-01-20T13:48:56",
+                "2026-01-20T16:26:29",
+                "2026-01-20T17:16:36"
+            ]
+        },
+        "description": "This table stores management details of ward panchayats, including their category, creation and update timestamps, and associated identifiers for mandal, gram, and user, in a local government or administrative context."
     },
     "wrad_no_master": {
         "table_name": "wrad_no_master",
@@ -1409,6 +2873,26 @@
                 "type": "DATETIME"
             }
         ],
-        "description": "This table appears to store a master list of unique ward numbers, likely used for organizational or administrative purposes within a healthcare or similar setting."
+        "sample_values": {
+            "id": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0"
+            ],
+            "ward_no": [
+                "1.0",
+                "2.0",
+                "3.0",
+                "4.0",
+                "5.0"
+            ],
+            "created_at": [
+                "2025-11-25T08:10:39",
+                "2025-11-25T08:12:43"
+            ]
+        },
+        "description": "This table stores ward number master data, including unique identifiers and creation timestamps, likely for organizational or administrative purposes."
     }
 }
