@@ -14,11 +14,41 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-embed_model = SentenceTransformer('BAAI/bge-small-en-v1.5')
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-db_engine = create_engine(os.getenv("DATABASE_URL"))
+# ─────────────────────────────────────────────
+# Lazy singletons — initialized on first use,
+# NOT at import time (prevents startup timeout)
+# ─────────────────────────────────────────────
+_embed_model = None
+_groq_client = None
+_db_engine = None
 
 
+def get_embed_model() -> SentenceTransformer:
+    global _embed_model
+    if _embed_model is None:
+        print("[INFO] Loading SentenceTransformer model...")
+        _embed_model = SentenceTransformer("BAAI/bge-small-en-v1.5")
+        print("[INFO] SentenceTransformer model loaded.")
+    return _embed_model
+
+
+def get_groq_client() -> Groq:
+    global _groq_client
+    if _groq_client is None:
+        _groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    return _groq_client
+
+
+def get_db_engine():
+    global _db_engine
+    if _db_engine is None:
+        _db_engine = create_engine(os.getenv("DATABASE_URL"))
+    return _db_engine
+
+
+# ─────────────────────────────────────────────
+# Utility helpers
+# ─────────────────────────────────────────────
 def universal_serializer(obj):
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
@@ -33,7 +63,6 @@ def _humanize_field_name(field_name: str) -> str:
     """Convert DB-style keys into clean, presentation-friendly labels."""
     if not field_name:
         return "Field"
-
     cleaned = re.sub(r"[_\-]+", " ", str(field_name)).strip()
     cleaned = re.sub(r"\s+", " ", cleaned)
     return cleaned.title()
@@ -82,10 +111,14 @@ def detect_intent(user_query: str) -> str:
     q = user_query.lower()
 
     count_keywords = ["kitne", "how many", "count", "total", "kul", "sankhya", "ginti"]
-    lookup_keywords = ["who is", "detail", "info", "pata", "address", "contact",
-                       "phone", "mobile", "naam", "name of", "kiska", "kaun"]
-    list_keywords   = ["list", "show", "all", "sabhi", "dikhao", "suchi", "record",
-                       "members", "sadasya", "give me", "fetch", "report"]
+    lookup_keywords = [
+        "who is", "detail", "info", "pata", "address", "contact",
+        "phone", "mobile", "naam", "name of", "kiska", "kaun",
+    ]
+    list_keywords = [
+        "list", "show", "all", "sabhi", "dikhao", "suchi", "record",
+        "members", "sadasya", "give me", "fetch", "report",
+    ]
 
     if any(k in q for k in count_keywords):
         return "count"
@@ -97,6 +130,9 @@ def detect_intent(user_query: str) -> str:
     return "list"
 
 
+# ─────────────────────────────────────────────
+# Main chatbot class
+# ─────────────────────────────────────────────
 class DatabaseChatbot:
     def __init__(self, project_path=None):
         if project_path is None:
@@ -110,8 +146,8 @@ class DatabaseChatbot:
     # ─────────────────────────────────────────
     # Vector search → relevant tables + schema
     # ─────────────────────────────────────────
-    def get_context(self, user_query):
-        query_vec = embed_model.encode([user_query])
+    def get_context(self, user_query: str):
+        query_vec = get_embed_model().encode([user_query])
         _, indices = self.index.search(np.array(query_vec).astype("float32"), k=3)
 
         context_str = "STRICT SCHEMA REFERENCE (use ONLY these tables and columns):\n"
@@ -124,10 +160,12 @@ class DatabaseChatbot:
             relevant_tables.append(table_name)
             info = self.metadata[table_name]
             cols = [f"{c['name']} ({c['type']})" for c in info["columns"]]
-            sample_vals = info.get("sample_values", {})   # optional: store sample cell values during indexing
+            sample_vals = info.get("sample_values", {})
             context_str += f"\nTable: `{table_name}`\n  Columns: {', '.join(cols)}\n"
             if sample_vals:
-                context_str += f"  Sample values: {json.dumps(sample_vals, ensure_ascii=False)}\n"
+                context_str += (
+                    f"  Sample values: {json.dumps(sample_vals, ensure_ascii=False)}\n"
+                )
 
         return context_str, relevant_tables
 
@@ -151,6 +189,7 @@ class DatabaseChatbot:
         context, tables = self.get_context(user_query)
         intent = detect_intent(user_query)
         header_title = self._resolve_header(tables)
+        groq = get_groq_client()
 
         # ── 1. SQL GENERATION ────────────────────────────────────────────────────
         sql_prompt = f"""
@@ -173,10 +212,10 @@ STRICT RULES — violating any rule makes the query wrong:
 8. Never use DELETE, UPDATE, INSERT, DROP, or ALTER.
 """
 
-        res = groq_client.chat.completions.create(
+        res = groq.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": sql_prompt}],
-            temperature=0,          # deterministic SQL
+            temperature=0,
         )
         sql_query = (
             res.choices[0].message.content.strip()
@@ -192,13 +231,15 @@ STRICT RULES — violating any rule makes the query wrong:
 
         # ── 3. EXECUTE ───────────────────────────────────────────────────────────
         try:
-            with db_engine.connect() as conn:
+            with get_db_engine().connect() as conn:
                 result = conn.execute(text(sql_query))
                 raw_rows = [dict(row._mapping) for row in result]
 
             has_more = len(raw_rows) > 25
             display_data = raw_rows[:25]
-            clean_data = json.loads(json.dumps(display_data, default=universal_serializer))
+            clean_data = json.loads(
+                json.dumps(display_data, default=universal_serializer)
+            )
 
             # ── 4. NO DATA ───────────────────────────────────────────────────────
             if not clean_data:
@@ -226,7 +267,9 @@ STRICT RULES — violating any rule makes the query wrong:
 
             # LOOKUP — short detail card, NOT a full table
             if intent == "lookup":
-                final_answer = format_lookup_response(clean_data, f"{header_title} - Lookup")
+                final_answer = format_lookup_response(
+                    clean_data, f"{header_title} - Lookup"
+                )
                 return {
                     "answer": final_answer,
                     "sql": sql_query,
@@ -240,17 +283,20 @@ The user asked: "{user_query}"
 Format the data below as a clean Markdown table.
 
 RULES:
-- Then the markdown table immediately — no introductory text.
+- Output the markdown table immediately — no introductory text.
 - Column headers should be human-readable (translate/expand abbreviations if obvious).
 - Do NOT add any text after the table except the "more records" note if needed.
 
 Data: {json.dumps(clean_data, ensure_ascii=False)}
 """
-            fmt_res = groq_client.chat.completions.create(
+            fmt_res = groq.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[
-                    {"role": "system", "content": "You are a markdown table formatter. Output only the header and table."},
-                    {"role": "user",   "content": summary_prompt},
+                    {
+                        "role": "system",
+                        "content": "You are a markdown table formatter. Output only the header and table.",
+                    },
+                    {"role": "user", "content": summary_prompt},
                 ],
             )
             final_answer = fmt_res.choices[0].message.content.strip()
