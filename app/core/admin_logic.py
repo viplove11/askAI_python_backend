@@ -9,14 +9,33 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-embed_model = SentenceTransformer('BAAI/bge-small-en-v1.5')
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+# ─────────────────────────────────────────────
+# Lazy singletons — NOT loaded at import time
+# ─────────────────────────────────────────────
+_embed_model = None
+_groq_client = None
+
+
+def get_embed_model() -> SentenceTransformer:
+    global _embed_model
+    if _embed_model is None:
+        print("[INFO] Loading SentenceTransformer model...")
+        _embed_model = SentenceTransformer("BAAI/bge-small-en-v1.5")
+        print("[INFO] SentenceTransformer model loaded.")
+    return _embed_model
+
+
+def get_groq_client() -> Groq:
+    global _groq_client
+    if _groq_client is None:
+        _groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    return _groq_client
 
 
 # ─────────────────────────────────────────────────────────────────
 # Step 1 — Inspect schema + collect sample values from each column
 # ─────────────────────────────────────────────────────────────────
-def generate_db_inventory(db_url, sample_limit: int = 5):
+def generate_db_inventory(db_url: str, sample_limit: int = 5):
     """
     Inspects the DB and returns table schemas with real sample values.
 
@@ -46,13 +65,12 @@ def generate_db_inventory(db_url, sample_limit: int = 5):
                         f"LIMIT {sample_limit}"
                     )
                     rows = conn.execute(query).fetchall()
-                    # Convert to plain Python types (handles Decimal, date, etc.)
                     values = []
                     for row in rows:
                         v = row[0]
-                        if hasattr(v, "isoformat"):        # date / datetime
+                        if hasattr(v, "isoformat"):   # date / datetime
                             v = v.isoformat()
-                        elif hasattr(v, "__float__"):       # Decimal
+                        elif hasattr(v, "__float__"):  # Decimal
                             v = float(v)
                         values.append(str(v))
                     sample_values[col_name] = values
@@ -71,7 +89,6 @@ def generate_db_inventory(db_url, sample_limit: int = 5):
 
 # ─────────────────────────────────────────────────────────────────
 # Step 2 — Ask LLM for a 1-sentence table description
-#           Now includes sample values so it understands Hindi data
 # ─────────────────────────────────────────────────────────────────
 def get_ai_description(table_info: dict) -> str:
     """
@@ -100,7 +117,7 @@ Focus on business meaning (e.g. "Stores BJP party member details including
 name, address, ward number and contact information in Hindi.").
 Return ONLY that sentence — no extra text."""
 
-    response = groq_client.chat.completions.create(
+    response = get_groq_client().chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[{"role": "user", "content": prompt}],
         temperature=0,
@@ -129,12 +146,10 @@ def build_and_save_index(db_url: str, out_dir: str):
         metadata[name] = {
             "table_name": name,
             "columns": table["columns"],
-            "sample_values": table["sample_values"],   # ← NEW: stored for chat_logic
+            "sample_values": table["sample_values"],
             "description": desc,
         }
 
-        # The text we embed = description + column names + a few sample values
-        # Richer text → better vector search relevance
         sample_snippets = []
         for col_name, vals in table["sample_values"].items():
             if vals:
@@ -143,13 +158,13 @@ def build_and_save_index(db_url: str, out_dir: str):
         embed_text = (
             f"Table {name}: {desc} "
             f"Columns: {', '.join(c['name'] for c in table['columns'])}. "
-            f"Sample data — {'; '.join(sample_snippets[:8])}"   # cap at 8 to stay concise
+            f"Sample data — {'; '.join(sample_snippets[:8])}"
         )
         descriptions.append(embed_text)
         table_names.append(name)
 
     print("🔢 Vectorizing and building FAISS index...")
-    vectors = embed_model.encode(descriptions)
+    vectors = get_embed_model().encode(descriptions)   # ← lazy load here
 
     dim = vectors.shape[1]
     index = faiss.IndexFlatL2(dim)
@@ -160,7 +175,7 @@ def build_and_save_index(db_url: str, out_dir: str):
     faiss.write_index(index, os.path.join(out_dir, "vector.faiss"))
 
     with open(os.path.join(out_dir, "metadata.json"), "w", encoding="utf-8") as f:
-        json.dump(metadata, f, indent=4, ensure_ascii=False)   # ensure_ascii=False keeps Hindi readable
+        json.dump(metadata, f, indent=4, ensure_ascii=False)
 
     with open(os.path.join(out_dir, "id_map.json"), "w", encoding="utf-8") as f:
         json.dump(table_names, f, ensure_ascii=False)
