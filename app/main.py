@@ -23,7 +23,7 @@ class ChatRequest(BaseModel):
 
 @app.get("/")
 def root():
-    return {"message": "Ask AI Root API is running 🚀"}
+    return {"message": "Sarvekshan Sahayak AI Assistant Root API is running 🚀"}
 
 
 @app.post("/admin/generate-brain")
