@@ -29,6 +29,46 @@ def universal_serializer(obj):
     return str(obj)
 
 
+def _humanize_field_name(field_name: str) -> str:
+    """Convert DB-style keys into clean, presentation-friendly labels."""
+    if not field_name:
+        return "Field"
+
+    cleaned = re.sub(r"[_\-]+", " ", str(field_name)).strip()
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned.title()
+
+
+def _format_lookup_value(value):
+    """Render values in a readable and consistent way for lookup cards."""
+    if value is None:
+        return "N/A"
+    if isinstance(value, str):
+        stripped = value.strip()
+        return stripped if stripped else "N/A"
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    return str(value)
+
+
+def format_lookup_response(records: list, title: str) -> str:
+    """Build a professional markdown lookup response without table syntax."""
+    sections = [f"### {title}", ""]
+
+    for idx, record in enumerate(records, start=1):
+        sections.append(f"#### Record {idx}")
+        for key, value in record.items():
+            label = _humanize_field_name(key)
+            display_val = _format_lookup_value(value)
+            sections.append(f"- **{label}:** {display_val}")
+        if idx < len(records):
+            sections.append("")
+            sections.append("---")
+            sections.append("")
+
+    return "\n".join(sections).strip()
+
+
 # ─────────────────────────────────────────────
 # Intent classifier — decides response format
 # ─────────────────────────────────────────────
@@ -186,31 +226,9 @@ STRICT RULES — violating any rule makes the query wrong:
 
             # LOOKUP — short detail card, NOT a full table
             if intent == "lookup":
-                summary_prompt = f"""
-The user asked: "{user_query}"
-Below is the database result (1–3 records at most).
-
-FORMAT RULES — follow exactly:
-- Present each record as a small definition list (bold key: value), NOT a markdown table.
-- Use this format:
-  **Field Name:** Value
-  **Field Name:** Value
-- If there are multiple records, separate them with a horizontal rule (---).
-- NO table syntax (no | pipes |).
-- NO introductory sentences.
-- Be concise.
-
-Data: {json.dumps(clean_data, ensure_ascii=False)}
-"""
-                fmt_res = groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[
-                        {"role": "system", "content": "You format database records as clean definition lists. Never use markdown tables."},
-                        {"role": "user",   "content": summary_prompt},
-                    ],
-                )
+                final_answer = format_lookup_response(clean_data, f"{header_title} - Lookup")
                 return {
-                    "answer": fmt_res.choices[0].message.content.strip(),
+                    "answer": final_answer,
                     "sql": sql_query,
                     "data": clean_data,
                     "intent": intent,
