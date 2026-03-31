@@ -6,13 +6,16 @@ import numpy as np
 from datetime import datetime, date
 from decimal import Decimal
 from uuid import UUID
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import create_engine, text
-from sentence_transformers import SentenceTransformer
 from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv()
+
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 # ─────────────────────────────────────────────
 # Lazy singletons — initialized on first use,
@@ -23,9 +26,11 @@ _groq_client = None
 _db_engine = None
 
 
-def get_embed_model() -> SentenceTransformer:
+def get_embed_model() -> Any:
     global _embed_model
     if _embed_model is None:
+        from sentence_transformers import SentenceTransformer
+
         print("[INFO] Loading SentenceTransformer model...")
         _embed_model = SentenceTransformer("BAAI/bge-small-en-v1.5")
         print("[INFO] SentenceTransformer model loaded.")

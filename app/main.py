@@ -8,10 +8,6 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from app.core.admin_logic import build_and_save_index
-from app.core.chat_logic import DatabaseChatbot
-
-
 # ─────────────────────────────────────────────
 # Lifespan: replaces deprecated @app.on_event
 # Port binds FIRST, then startup tasks run.
@@ -59,6 +55,8 @@ def root():
 async def generate_brain():
     """Re-index the connected database and rebuild the FAISS vector store."""
     try:
+        from app.core.admin_logic import build_and_save_index
+
         db_url = os.getenv("DATABASE_URL")
         out_dir = os.getenv("STORAGE_PATH", "./store/current_db")
         os.makedirs(out_dir, exist_ok=True)
@@ -72,6 +70,8 @@ async def generate_brain():
 async def chat_with_db(request: ChatRequest):
     """Main chat endpoint — runs NL → SQL → formatted answer pipeline."""
     try:
+        from app.core.chat_logic import DatabaseChatbot
+
         bot = DatabaseChatbot()
         result = bot.ask(request.question)
 
