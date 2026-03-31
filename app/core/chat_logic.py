@@ -6,36 +6,56 @@ import numpy as np
 from datetime import datetime, date
 from decimal import Decimal
 from uuid import UUID
-from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import create_engine, text
 from groq import Groq
 from dotenv import load_dotenv
+from app.core.embeddings import get_embedding_service
 
 load_dotenv()
-
-if TYPE_CHECKING:
-    from sentence_transformers import SentenceTransformer
 
 # ─────────────────────────────────────────────
 # Lazy singletons — initialized on first use,
 # NOT at import time (prevents startup timeout)
 # ─────────────────────────────────────────────
-_embed_model = None
 _groq_client = None
 _db_engine = None
 
 
-def get_embed_model() -> Any:
-    global _embed_model
-    if _embed_model is None:
-        from sentence_transformers import SentenceTransformer
+def _log_model_event(purpose: str, model: str, status: str, detail: str = ""):
+    suffix = f" | {detail}" if detail else ""
+    print(f"[MODEL][{purpose}][{status}] {model}{suffix}")
 
-        print("[INFO] Loading SentenceTransformer model...")
-        _embed_model = SentenceTransformer("BAAI/bge-small-en-v1.5")
-        print("[INFO] SentenceTransformer model loaded.")
-    return _embed_model
 
+def _sql_llm_models() -> list:
+    """Ordered SQL-generation model chain."""
+    defaults = [
+        os.getenv("SQL_LLM_MODEL", "qwen/qwen3-32b").strip(),
+        os.getenv("SQL_LLM_FALLBACK_MODEL", "llama-3.3-70b-versatile").strip(),
+        os.getenv("SQL_LLM_SECOND_FALLBACK_MODEL", "llama-3.1-8b-instant").strip(),
+    ]
+    seen = set()
+    ordered = []
+    for model_name in defaults:
+        if model_name and model_name not in seen:
+            seen.add(model_name)
+            ordered.append(model_name)
+    return ordered
+
+
+def _format_llm_models() -> list:
+    """Ordered response-formatting model chain."""
+    defaults = [
+        os.getenv("FORMAT_LLM_MODEL", "llama-3.3-70b-versatile").strip(),
+        os.getenv("FORMAT_LLM_FALLBACK_MODEL", "llama-3.1-8b-instant").strip(),
+    ]
+    seen = set()
+    ordered = []
+    for model_name in defaults:
+        if model_name and model_name not in seen:
+            seen.add(model_name)
+            ordered.append(model_name)
+    return ordered
 
 def get_groq_client() -> Groq:
     global _groq_client
@@ -147,12 +167,49 @@ class DatabaseChatbot:
             self.metadata = json.load(f)
         with open(os.path.join(project_path, "id_map.json"), "r") as f:
             self.id_map = json.load(f)
+        self.embedder = get_embedding_service()
+        _log_model_event(
+            "embeddings",
+            f"{self.embedder.provider}/{self.embedder.model_name}",
+            "active",
+        )
+        self._validate_embedding_compatibility(project_path)
+
+    def _validate_embedding_compatibility(self, project_path: str):
+        info_path = os.path.join(project_path, "embedding_info.json")
+        if not os.path.exists(info_path):
+            print("[WARN] embedding_info.json not found. Skipping embedding compatibility check.")
+            return
+
+        with open(info_path, "r", encoding="utf-8") as f:
+            info = json.load(f)
+
+        expected_provider = info.get("provider")
+        expected_model = info.get("model")
+        expected_dim = info.get("vector_dim")
+
+        if (
+            expected_provider != self.embedder.provider
+            or expected_model != self.embedder.model_name
+        ):
+            raise RuntimeError(
+                "Embedding provider/model mismatch. "
+                f"Index built with {expected_provider}/{expected_model}, "
+                f"current config is {self.embedder.provider}/{self.embedder.model_name}. "
+                "Regenerate index via /admin/generate-brain."
+            )
+
+        if expected_dim and int(expected_dim) != int(self.index.d):
+            raise RuntimeError(
+                "Embedding dimension mismatch between FAISS index and embedding_info.json. "
+                "Regenerate index via /admin/generate-brain."
+            )
 
     # ─────────────────────────────────────────
     # Vector search → relevant tables + schema
     # ─────────────────────────────────────────
     def get_context(self, user_query: str):
-        query_vec = get_embed_model().encode([user_query])
+        query_vec = self.embedder.embed_query(user_query)
         _, indices = self.index.search(np.array(query_vec).astype("float32"), k=3)
 
         context_str = "STRICT SCHEMA REFERENCE (use ONLY these tables and columns):\n"
@@ -217,17 +274,36 @@ STRICT RULES — violating any rule makes the query wrong:
 8. Never use DELETE, UPDATE, INSERT, DROP, or ALTER.
 """
 
-        res = groq.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": sql_prompt}],
-            temperature=0,
-        )
-        sql_query = (
-            res.choices[0].message.content.strip()
-            .replace("```sql", "")
-            .replace("```", "")
-            .strip()
-        )
+        sql_query = None
+        last_sql_error = None
+        for model_name in _sql_llm_models():
+            _log_model_event("sql_generation", model_name, "attempt")
+            try:
+                res = groq.chat.completions.create(
+                    model=model_name,
+                    messages=[{"role": "user", "content": sql_prompt}],
+                    temperature=0,
+                )
+                sql_query = (
+                    res.choices[0].message.content.strip()
+                    .replace("```sql", "")
+                    .replace("```", "")
+                    .strip()
+                )
+                _log_model_event("sql_generation", model_name, "success")
+                break
+            except Exception as e:
+                last_sql_error = e
+                _log_model_event("sql_generation", model_name, "failed", str(e))
+                print(f"[WARN] SQL generation model failed ({model_name}): {e}")
+
+        if not sql_query:
+            return {
+                "answer": "### Error\nSQL generation failed. Please try again shortly.",
+                "error": str(last_sql_error) if last_sql_error else "Unknown SQL generation error.",
+                "sql": "N/A",
+                "data": [],
+            }
 
         # ── 2. SECURITY CHECK ────────────────────────────────────────────────────
         forbidden = [r"\bDELETE\b", r"\bUPDATE\b", r"\bINSERT\b", r"\bDROP\b", r"\bALTER\b"]
@@ -294,17 +370,35 @@ RULES:
 
 Data: {json.dumps(clean_data, ensure_ascii=False)}
 """
-            fmt_res = groq.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a markdown table formatter. Output only the header and table.",
-                    },
-                    {"role": "user", "content": summary_prompt},
-                ],
-            )
-            final_answer = fmt_res.choices[0].message.content.strip()
+            final_answer = None
+            last_fmt_error = None
+            for model_name in _format_llm_models():
+                _log_model_event("list_formatting", model_name, "attempt")
+                try:
+                    fmt_res = groq.chat.completions.create(
+                        model=model_name,
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": "You are a markdown table formatter. Output only the header and table.",
+                            },
+                            {"role": "user", "content": summary_prompt},
+                        ],
+                    )
+                    final_answer = fmt_res.choices[0].message.content.strip()
+                    _log_model_event("list_formatting", model_name, "success")
+                    break
+                except Exception as e:
+                    last_fmt_error = e
+                    _log_model_event("list_formatting", model_name, "failed", str(e))
+
+            if final_answer is None:
+                return {
+                    "answer": "### Error\nResult formatting failed. Please try again.",
+                    "error": str(last_fmt_error) if last_fmt_error else "Unknown formatting error.",
+                    "sql": sql_query,
+                    "data": clean_data,
+                }
             if has_more:
                 final_answer += "\n\n*Showing first 25 of more records.*"
 

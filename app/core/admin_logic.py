@@ -2,32 +2,22 @@ import os
 import json
 import faiss
 import numpy as np
-from typing import TYPE_CHECKING, Any
 from sqlalchemy import create_engine, inspect, text
 from groq import Groq
 from dotenv import load_dotenv
+from app.core.embeddings import get_embedding_service
 
 load_dotenv()
-
-if TYPE_CHECKING:
-    from sentence_transformers import SentenceTransformer
 
 # ─────────────────────────────────────────────
 # Lazy singletons — NOT loaded at import time
 # ─────────────────────────────────────────────
-_embed_model = None
 _groq_client = None
 
 
-def get_embed_model() -> Any:
-    global _embed_model
-    if _embed_model is None:
-        from sentence_transformers import SentenceTransformer
-
-        print("[INFO] Loading SentenceTransformer model...")
-        _embed_model = SentenceTransformer("BAAI/bge-small-en-v1.5")
-        print("[INFO] SentenceTransformer model loaded.")
-    return _embed_model
+def _log_model_event(purpose: str, model: str, status: str, detail: str = ""):
+    suffix = f" | {detail}" if detail else ""
+    print(f"[MODEL][{purpose}][{status}] {model}{suffix}")
 
 
 def get_groq_client() -> Groq:
@@ -35,6 +25,31 @@ def get_groq_client() -> Groq:
     if _groq_client is None:
         _groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
     return _groq_client
+
+
+def _admin_llm_model() -> str:
+    """Primary model used for admin-side description generation."""
+    return os.getenv("ADMIN_LLM_MODEL", "qwen/qwen3-32b").strip()
+
+
+def _admin_llm_fallback_model() -> str:
+    """First fallback for admin-side description generation."""
+    return os.getenv("ADMIN_LLM_FALLBACK_MODEL", "llama-3.3-70b-versatile").strip()
+
+
+def _admin_llm_second_fallback_model() -> str:
+    """Second fallback for admin-side description generation."""
+    return os.getenv("ADMIN_LLM_SECOND_FALLBACK_MODEL", "llama-3.1-8b-instant").strip()
+
+
+def _fallback_table_description(table_info: dict) -> str:
+    """Deterministic fallback if LLM call fails/rate-limits."""
+    table_name = table_info.get("table_name", "this table")
+    cols = [c.get("name", "") for c in table_info.get("columns", []) if c.get("name")]
+    if not cols:
+        return f"Stores records in `{table_name}`."
+    col_preview = ", ".join(cols[:8])
+    return f"Stores records in `{table_name}` with fields like {col_preview}."
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -102,8 +117,9 @@ def get_ai_description(table_info: dict) -> str:
     """
     col_lines = []
     for col in table_info["columns"]:
-        samples = table_info["sample_values"].get(col["name"], [])
-        sample_str = f"  (e.g. {', '.join(samples)})" if samples else ""
+        samples = table_info["sample_values"].get(col["name"], [])[:3]
+        trimmed_samples = [str(v)[:40] for v in samples]
+        sample_str = f"  (e.g. {', '.join(trimmed_samples)})" if trimmed_samples else ""
         col_lines.append(f"  - {col['name']} ({col['type']}){sample_str}")
 
     col_block = "\n".join(col_lines)
@@ -122,12 +138,39 @@ Focus on business meaning (e.g. "Stores BJP party member details including
 name, address, ward number and contact information in Hindi.").
 Return ONLY that sentence — no extra text."""
 
-    response = get_groq_client().chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0,
-    )
-    return response.choices[0].message.content.strip()
+    candidate_models = [
+        _admin_llm_model(),
+        _admin_llm_fallback_model(),
+        _admin_llm_second_fallback_model(),
+    ]
+
+    # Preserve order but avoid duplicate attempts if env vars repeat values.
+    seen = set()
+    ordered_models = []
+    for model_name in candidate_models:
+        if model_name and model_name not in seen:
+            seen.add(model_name)
+            ordered_models.append(model_name)
+
+    for model_name in ordered_models:
+        _log_model_event("admin_description", model_name, "attempt")
+        try:
+            response = get_groq_client().chat.completions.create(
+                model=model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0,
+            )
+            _log_model_event("admin_description", model_name, "success")
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            _log_model_event("admin_description", model_name, "failed", str(e))
+            print(
+                f"[WARN] Description model failed for {table_info.get('table_name')} "
+                f"({model_name}): {e}"
+            )
+
+    # Do not fail full brain generation if all model calls fail.
+    return _fallback_table_description(table_info)
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -169,7 +212,8 @@ def build_and_save_index(db_url: str, out_dir: str):
         table_names.append(name)
 
     print("🔢 Vectorizing and building FAISS index...")
-    vectors = get_embed_model().encode(descriptions)   # ← lazy load here
+    embedder = get_embedding_service()
+    vectors = embedder.embed_documents(descriptions)
 
     dim = vectors.shape[1]
     index = faiss.IndexFlatL2(dim)
@@ -184,6 +228,10 @@ def build_and_save_index(db_url: str, out_dir: str):
 
     with open(os.path.join(out_dir, "id_map.json"), "w", encoding="utf-8") as f:
         json.dump(table_names, f, ensure_ascii=False)
+
+    embedding_info = embedder.get_info(vector_dim=int(dim))
+    with open(os.path.join(out_dir, "embedding_info.json"), "w", encoding="utf-8") as f:
+        json.dump(embedding_info, f, indent=4, ensure_ascii=False)
 
     print(f"✅ Brain saved to '{out_dir}' — {len(table_names)} tables indexed.")
     for name in table_names:
