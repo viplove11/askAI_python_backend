@@ -1,0 +1,6 @@
+{
+    "provider": "cohere",
+    "model": "embed-v4.0",
+    "vector_dim": 1024,
+    "created_at_utc": "2026-03-31T18:10:43.963812+00:00"
+}
