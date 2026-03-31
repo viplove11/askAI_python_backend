@@ -2,12 +2,15 @@ import os
 import json
 import faiss
 import numpy as np
+from typing import TYPE_CHECKING, Any
 from sqlalchemy import create_engine, inspect, text
-from sentence_transformers import SentenceTransformer
 from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv()
+
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 # ─────────────────────────────────────────────
 # Lazy singletons — NOT loaded at import time
@@ -16,9 +19,11 @@ _embed_model = None
 _groq_client = None
 
 
-def get_embed_model() -> SentenceTransformer:
+def get_embed_model() -> Any:
     global _embed_model
     if _embed_model is None:
+        from sentence_transformers import SentenceTransformer
+
         print("[INFO] Loading SentenceTransformer model...")
         _embed_model = SentenceTransformer("BAAI/bge-small-en-v1.5")
         print("[INFO] SentenceTransformer model loaded.")
