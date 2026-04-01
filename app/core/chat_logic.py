@@ -123,6 +123,262 @@ def format_lookup_response(records: list, title: str) -> str:
     return "\n".join(sections).strip()
 
 
+def _resolve_count_entity(user_query: str, tables: list, sql_query: str) -> str:
+    """
+    Pick the most likely counted entity so count responses don't default to "members".
+    """
+    q = (user_query or "").lower()
+    joined_tables = " ".join(tables or []).lower()
+    sql = (sql_query or "").lower()
+    combined = f"{q} {joined_tables} {sql}"
+
+    # If user explicitly asks with a specific term, preserve that wording.
+    if any(k in q for k in ["gaon", "gaav"]):
+        return "gaon"
+    if "village" in q:
+        return "village"
+
+    rules = [
+        (["village", "villages", "gaon", "gaav", "gram", "tbl_village_master"], "villages"),
+        (["ward", "panchayat", "ward_panchayat"], "ward/panchayat records"),
+        (["mandal", "tbl_mandal_master"], "mandals"),
+        (["district", "jila", "tbl_district_master", "districts"], "districts"),
+        (["booth", "booth_main", "booth_vivaran"], "booths"),
+        (["member", "members", "sadasya", "sadasyata", "bjp_sadasyata"], "members"),
+        (["voter", "voters", "tbl_voter_distribution"], "voters"),
+    ]
+
+    for keywords, label in rules:
+        if any(keyword in combined for keyword in keywords):
+            return label
+
+    return "records"
+
+
+def _normalize_generated_sql(raw_output: str) -> str:
+    """
+    Convert model output into a safe executable SQL query string.
+    Handles noisy outputs such as:
+    - <think>...</think> blocks
+    - markdown fences
+    - explanatory text before/after SQL
+    """
+    if not raw_output:
+        return ""
+
+    text_blob = raw_output.strip()
+
+    # Remove reasoning/hidden-thought style tags if model emits them.
+    text_blob = re.sub(r"(?is)<think>.*?</think>", " ", text_blob)
+    text_blob = re.sub(r"(?is)<thinking>.*?</thinking>", " ", text_blob)
+
+    # Remove markdown fences.
+    text_blob = re.sub(r"(?is)```sql", "", text_blob)
+    text_blob = re.sub(r"(?is)```", "", text_blob).strip()
+
+    # Prefer a line that explicitly starts with SELECT/WITH.
+    lines = text_blob.splitlines()
+    start_idx = None
+    for idx in range(len(lines) - 1, -1, -1):
+        line = lines[idx].strip().lower()
+        if line.startswith("select ") or line.startswith("with "):
+            start_idx = idx
+            break
+
+    if start_idx is not None:
+        sql_only = "\n".join(lines[start_idx:]).strip()
+    else:
+        # Fallback: find last SELECT occurrence (helps when SQL is embedded in prose).
+        starts = [m.start() for m in re.finditer(r"(?is)\bselect\b", text_blob)]
+        if not starts:
+            starts = [m.start() for m in re.finditer(r"(?is)\bwith\b", text_blob)]
+        if not starts:
+            return ""
+        sql_only = text_blob[starts[-1]:].strip()
+
+    # Keep first SQL statement only.
+    if ";" in sql_only:
+        sql_only = sql_only.split(";", 1)[0] + ";"
+
+    # Minimal validity checks.
+    normalized = sql_only.strip()
+    if not re.match(r"(?is)^(select|with)\b", normalized):
+        return ""
+    if " from " not in f" {normalized.lower()} ":
+        return ""
+    return normalized
+
+
+def _is_incomplete_sql(sql_query: str) -> bool:
+    """
+    Detect obviously incomplete SQL that should never be executed.
+    """
+    if not sql_query:
+        return True
+
+    q = sql_query.strip()
+    q_lower = q.lower()
+
+    # Trailing unfinished clauses/operators.
+    if re.search(
+        r"(?is)(\bunion(\s+all)?\b|\bselect\b|\bfrom\b|\bwhere\b|\band\b|\bor\b|\bjoin\b|\bon\b|\bcollate\b)\s*;?\s*$",
+        q_lower,
+    ):
+        return True
+
+    # Unbalanced quotes/parentheses are usually malformed model output.
+    if q.count("'") % 2 != 0:
+        return True
+    if q.count("(") != q.count(")"):
+        return True
+
+    return False
+
+
+def _strip_collation_clauses(sql_query: str) -> str:
+    """
+    Remove explicit utf8mb4 collation clauses that can fail on binary-typed fields.
+    """
+    if not sql_query:
+        return sql_query
+    return re.sub(r"(?is)\s+COLLATE\s+utf8mb4_unicode_ci", "", sql_query).strip()
+
+
+def _is_binary_collation_error(error: Exception) -> bool:
+    msg = str(error).lower()
+    return "collation 'utf8mb4_unicode_ci' is not valid for character set 'binary'" in msg or "(1253," in msg
+
+
+def _extract_count_location(user_query: str) -> str | None:
+    """
+    Extract location for queries like:
+    - kurud mai kitne gaon hai
+    - kurud me kitne village hai
+    """
+    cleaned = re.sub(r"[^0-9A-Za-z\u0900-\u097F\s\-]", " ", user_query or "")
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+
+    match = re.search(
+        r"\b([A-Za-z\u0900-\u097F][0-9A-Za-z\u0900-\u097F\-]*)\s+(?:mai|me|mein)\s+kitne\b",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return None
+    return match.group(1)
+
+
+def _is_hidden_output_field(field_name: str) -> bool:
+    """
+    Fields that must never be shown in API responses.
+    """
+    key = (field_name or "").strip().lower()
+    if not key:
+        return False
+
+    # ID fields
+    if key == "id" or key.endswith("_id"):
+        return True
+
+    # Audit/system fields
+    blocked = {
+        "created_at", "updated_at", "created_by", "updated_by",
+        "modified_at", "modified_by", "deleted_at", "deleted_by",
+    }
+    return key in blocked
+
+
+def _sanitize_output_rows(rows: list) -> list:
+    """
+    Remove disallowed fields from output rows before formatting/returning.
+    """
+    sanitized = []
+    for row in rows or []:
+        filtered = {
+            k: v for k, v in row.items()
+            if not _is_hidden_output_field(str(k))
+        }
+        sanitized.append(filtered)
+    return sanitized
+
+
+def _is_capability_question(user_query: str) -> bool:
+    """
+    Detect meta/capability questions like:
+    - kya tum kisi record ko update kar sakte ho
+    - can you delete/insert/update records
+    """
+    q = (user_query or "").lower().strip()
+    if not q:
+        return False
+
+    action_words = [
+        "update", "delete", "insert", "modify", "change", "edit",
+        "add record", "remove record", "record ko update", "record update",
+    ]
+    capability_markers = [
+        "can you", "kya tum", "kya aap", "kar sakte", "kr skte", "possible", "allow",
+    ]
+
+    has_action = any(w in q for w in action_words)
+    has_capability_form = any(w in q for w in capability_markers) or q.endswith("?")
+    return has_action and has_capability_form
+
+
+def _is_mutation_request(user_query: str) -> bool:
+    """
+    Detect write-intent user commands so they are never treated as read/list queries.
+    Examples:
+    - update blocks
+    - delete record 12
+    - add new village
+    - block ka name change karo
+    """
+    q = (user_query or "").lower().strip()
+    if not q:
+        return False
+
+    normalized = re.sub(r"[^0-9a-z\u0900-\u097f\s_]", " ", q)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+
+    # Direct SQL command starts (strong signal).
+    if re.match(r"^(update|delete|insert|alter|drop|truncate|create|replace)\b", normalized):
+        return True
+
+    mutation_words = [
+        "update", "delete", "insert", "modify", "change", "edit", "add", "remove",
+        "rename", "set", "create", "drop", "truncate",
+        "badal", "badlo", "badal do", "hatao", "mitao", "jodo", "naya jodo",
+        "update karo", "change karo", "edit karo", "delete karo",
+    ]
+    mutation_targets = [
+        "record", "records", "row", "rows", "table", "data", "entry", "entries",
+        "block", "blocks", "village", "gaon", "member", "ward", "panchayat",
+    ]
+    read_intent_words = [
+        "show", "list", "fetch", "find", "count", "kitne", "how many",
+        "details", "report", "dikhao", "batao", "kaun", "kiska",
+    ]
+
+    has_mutation_word = any(w in normalized for w in mutation_words)
+    has_target_word = any(w in normalized for w in mutation_targets)
+    has_read_intent = any(w in normalized for w in read_intent_words)
+
+    # Imperative short commands like "update blocks", "delete record 3"
+    if has_mutation_word and has_target_word:
+        return True
+
+    # Global write-action guard: block write verbs even when entity is not explicit.
+    if has_mutation_word:
+        return True
+
+    # If mutation language appears without explicit read markers, treat as write intent.
+    if has_mutation_word and not has_read_intent:
+        return True
+
+    return False
+
+
 # ─────────────────────────────────────────────
 # Intent classifier — decides response format
 # ─────────────────────────────────────────────
@@ -248,6 +504,29 @@ class DatabaseChatbot:
     # Main entry point
     # ─────────────────────────────────────────
     def ask(self, user_query: str):
+        if _is_capability_question(user_query):
+            return {
+                "answer": (
+                    "Main read-only mode mein kaam karta hoon. "
+                    "Record update/insert/delete execute nahi karta."
+                ),
+                "sql": "N/A",
+                "data": [],
+                "intent": "capability",
+            }
+
+        if _is_mutation_request(user_query):
+            return {
+                "answer": (
+                    "Write request detect hua. Main read-only hoon, "
+                    "isliye update/insert/delete execute nahi kar sakta. "
+                    "Aap read query dein, jaise: 'show data', 'total kitne records hain'."
+                ),
+                "sql": "N/A",
+                "data": [],
+                "intent": "mutation_request",
+            }
+
         context, tables = self.get_context(user_query)
         intent = detect_intent(user_query)
         header_title = self._resolve_header(tables)
@@ -266,12 +545,15 @@ STRICT RULES — violating any rule makes the query wrong:
 1. USE ONLY the tables listed in the schema above. Do NOT invent table names.
 2. MINIMISE joins: if the required data exists in ONE table, use only that table.
    Only JOIN a second table when a foreign key lookup is genuinely needed for the answer.
-3. For string comparisons on Hindi/mixed columns use COLLATE utf8mb4_unicode_ci.
-4. For partial name matches use LIKE '%value%' with COLLATE utf8mb4_unicode_ci.
-5. LIMIT results to 26 rows maximum.
-6. Return ONLY the raw SQL query — no explanation, no markdown fences, no backticks.
-7. If the question asks for a count/total, use SELECT COUNT(*) — do NOT return individual rows.
-8. Never use DELETE, UPDATE, INSERT, DROP, or ALTER.
+3. Apply COLLATE utf8mb4_unicode_ci only on text expressions (CHAR/VARCHAR/TEXT), not binary/blob fields.
+4. For partial matches use LIKE '%value%'. Add collation only when the compared expression is text.
+5. Never add COLLATE in ORDER BY on binary/blob columns; if needed, convert first and ORDER BY the converted alias.
+6. LIMIT results to 26 rows maximum.
+7. Return ONLY the raw SQL query — no explanation, no markdown fences, no backticks.
+8. If the question asks for a count/total, use SELECT COUNT(*) — do NOT return individual rows.
+9. Never use DELETE, UPDATE, INSERT, DROP, or ALTER.
+10. In SELECT output, do NOT return technical columns: id, *_id, created_at, updated_at, created_by, updated_by.
+11. Prefer human-readable values (name/title columns) over numeric IDs. If needed, JOIN lookup/master tables to return names.
 """
 
         sql_query = None
@@ -284,12 +566,16 @@ STRICT RULES — violating any rule makes the query wrong:
                     messages=[{"role": "user", "content": sql_prompt}],
                     temperature=0,
                 )
-                sql_query = (
-                    res.choices[0].message.content.strip()
-                    .replace("```sql", "")
-                    .replace("```", "")
-                    .strip()
-                )
+                raw_model_output = res.choices[0].message.content or ""
+                sql_query = _normalize_generated_sql(raw_model_output)
+                if not sql_query:
+                    raise ValueError(
+                        "Model response did not contain executable SELECT/WITH SQL."
+                    )
+                if _is_incomplete_sql(sql_query):
+                    raise ValueError(
+                        "Model response contained incomplete SQL (trailing/unfinished clause)."
+                    )
                 _log_model_event("sql_generation", model_name, "success")
                 break
             except Exception as e:
@@ -313,7 +599,25 @@ STRICT RULES — violating any rule makes the query wrong:
         # ── 3. EXECUTE ───────────────────────────────────────────────────────────
         try:
             with get_db_engine().connect() as conn:
-                result = conn.execute(text(sql_query))
+                try:
+                    result = conn.execute(text(sql_query))
+                except Exception as db_err:
+                    # Self-heal a common MySQL failure: collation on binary values.
+                    if _is_binary_collation_error(db_err):
+                        repaired_sql = _strip_collation_clauses(sql_query)
+                        if repaired_sql and repaired_sql != sql_query:
+                            _log_model_event(
+                                "sql_execution",
+                                "mysql",
+                                "retry_without_collation",
+                                "Detected binary collation mismatch (1253).",
+                            )
+                            sql_query = repaired_sql
+                            result = conn.execute(text(sql_query))
+                        else:
+                            raise
+                    else:
+                        raise
                 raw_rows = [dict(row._mapping) for row in result]
 
             has_more = len(raw_rows) > 25
@@ -321,6 +625,7 @@ STRICT RULES — violating any rule makes the query wrong:
             clean_data = json.loads(
                 json.dumps(display_data, default=universal_serializer)
             )
+            clean_data = _sanitize_output_rows(clean_data)
 
             # ── 4. NO DATA ───────────────────────────────────────────────────────
             if not clean_data:
@@ -339,8 +644,27 @@ STRICT RULES — violating any rule makes the query wrong:
             # COUNT — natural conversational sentence
             if intent == "count":
                 count_val = list(clean_data[0].values())[0]
+                entity_label = _resolve_count_entity(user_query, tables, sql_query)
+                location_label = _extract_count_location(user_query)
+                if location_label:
+                    answer_text = f"{location_label} mai **{count_val}** {entity_label} hain."
+                else:
+                    answer_text = f"{header_title} mein total **{count_val}** {entity_label} hain."
                 return {
-                    "answer": f"{header_title} mein total **{count_val}** members hain.",
+                    "answer": answer_text,
+                    "sql": sql_query,
+                    "data": clean_data,
+                    "intent": intent,
+                }
+
+            # If rows exist but all visible fields are filtered out, return a clear message.
+            if all(not row for row in clean_data):
+                return {
+                    "answer": (
+                        "### Data Report\n\n"
+                        "Records mil gaye, lekin visible fields policy ke hisaab se "
+                        "sirf ID/audit columns the, isliye show nahi kiye gaye."
+                    ),
                     "sql": sql_query,
                     "data": clean_data,
                     "intent": intent,
